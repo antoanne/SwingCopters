@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+    <script src="menu.js"></script>
+<body>
+    <center>
+        <canvas id="myCanvas" width="320px" height="568px" style="border:1px solid black"></canvas>
+    </center>
+
+    <script type="text/javascript">
+        var canvas = document.getElementById("myCanvas");
+        var context = canvas.getContext("2d");
+        
+        var menu = new Menu(context);
+        
+        var scenes = ['home', 'game'];
+        var scene = 'home';
+        
+        var isDead = true;
+        var velocity = 0.5;
+        var gameFrame = 0;
+        
+        var city = new Image();
+        city.src = "images/city.png";
+        
+        var cloudList = [];
+        var obstacleList = [];
+        
+        var player = new Image();
+        var player_left = new Image();
+        
+        player.src = "images/player-right.png";
+        player.onload = function() {
+            player.positionX = canvas.width/2 - player.width/2;
+            player.speed = 0;
+            player.maxVelocity = 6;
+            player.isLoaded = true;
+        }
+        
+        player_left.src = "images/player-left.png";
+        player_left.onload = function() {
+            player_left.isLoaded = true;
+        }
+        
+        function loadClouds() {
+            for (var i=0; i < 8; i++) {
+                cloudList[i] = new Image();
+                cloudList[i].src = "images/cloud.png";
+            }
+        }
+        
+        function loadObstacles() {
+            for (var i=0; i < 8; i++) {
+                obstacleList[i] = new Image();
+                obstacleList[i].src = "images/obstacle.png";
+            }
+        }
+        
+        function beginClouds() {
+            for (var i=0; i < cloudList.length; i++) {
+                if ((i%2) == 0) {
+                    cloudList[i].positionX = canvas.width/2 - cloudList[i].width;
+                } else {
+                    cloudList[i].positionX = canvas.width/2;
+                }
+            }
+        }
+        
+        function beginObstacles() {
+            for (var i=0; i < obstacleList.length; i++) {
+                if ((i%2) == 0) {
+                    obstacleList[i].positionX = canvas.width/2 - obstacleList[i].width;
+                } else {
+                    obstacleList[i].positionX = canvas.width/2;
+                }
+            }
+        }
+        
+        function drawClouds() {
+            for (var i=0; i < cloudList.length; i++) {
+                context.drawImage(cloudList[i], cloudList[i].positionX, 
+                                  (gameFrame % (cloudList[i].height * cloudList.length) + (cloudList[i].height * 2 * (i - cloudList.length/2)) ));
+            }
+        }
+        
+        function drawObstacles() {
+            for (var i=0; i < obstacleList.length; i++) {
+                context.drawImage(obstacleList[i], obstacleList[i].positionX, 
+                                  (gameFrame % (obstacleList[i].height * 6 * obstacleList.length) + (obstacleList[i].height * 12 * (i - obstacleList.length/2)) ));
+//                if () {
+//                    killPlayer();
+//                }
+            }
+        }
+        
+        function drawRect(x,y,w,h,color) {
+            context.fillStyle = color;
+            context.fillRect(x,y,w,h);
+        }
+        
+        function changeScene(e) {
+            if (!player.isLoaded && !player_left.isLoaded) return;
+            //console.log(e.keyCode + '::' + isDead + '::' + scene);
+            if(e.keyCode == 13 && isDead) {
+                isDead = !isDead;
+                if(scene == scenes[0]) {
+                    scene = scenes[1];
+                } else {
+                    scene = scenes[0];
+                }
+            }
+            
+            // press D to kill player
+            if(e.keyCode == 68) {
+                killPlayer();
+            }
+        }
+        
+        function killPlayer() {
+            isDead = true;
+            gameFrame = 0;
+            scene = scenes[0];
+            player.speed = 0;
+            player.positionX = canvas.width/2 - player.width/2;
+            
+        }
+        
+        function changeSpeed(e) {
+            //console.log('velocity: ' + velocity);
+            if (e.keyCode == 13 && !isDead) {
+                velocity *= -1;
+            }
+        }
+        
+        function drawGameScene() {
+            //console.log('draw game');
+            gameFrame += 6;
+            drawClouds();
+            drawObstacles();
+            drawCity();
+            drawPlayer();
+        }
+        
+        function drawHomeScene() {
+            //console.log('draw home');
+            beginClouds();
+            drawClouds();
+            beginObstacles();
+            drawObstacles();
+            drawCity();
+            drawPlayer();
+        }
+        
+        function drawScene() {
+            switch(scene) {
+                    // GAME
+                    case scenes[1]:
+                        drawGameScene();
+                    break;
+                    // HOME
+                    default:
+                        drawHomeScene();
+                    break;
+            }
+        }
+        
+        function drawBG() {
+            drawRect(0, 0, canvas.width, canvas.height, '#66C3E4');
+        }
+        
+        function drawCity() {
+            if (gameFrame < 200) {
+                context.drawImage(city, 0, canvas.height - 190 + gameFrame);
+            } else {
+                context.drawImage(city, 0, canvas.height - 190 + 200);
+            }
+        }
+        
+        function drawPlayer() {
+            player.positionX += player.speed;
+            if (player.positionX >= canvas.width - player.width) {
+                player.positionX = canvas.width - player.width;
+                killPlayer();
+            } else if (player.positionX <= 0) {
+                player.positionX = 0;
+                killPlayer();
+            }
+            if(velocity > 0) {
+                context.drawImage(player, player.positionX, canvas.height - 190);
+            } else {
+                context.drawImage(player_left, player.positionX, canvas.height - 190);
+            }
+            //console.log(player.speed + '::' + player.positionX + '::' + (canvas.width - player.width));
+        }
+        
+        function updatePlayerSpeed() {
+            if (scene == scenes[1] && !isDead) {
+                player.speed += velocity;
+                if (player.speed >= player.maxVelocity) {
+                    player.speed = player.maxVelocity;
+                }
+                if (player.speed <= -player.maxVelocity) {
+                    player.speed = -player.maxVelocity;
+                }
+            }
+        }
+        
+        function update() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            drawBG();
+            updatePlayerSpeed();
+        }
+        
+        function loop() {
+            update();
+            drawScene();
+            setTimeout(loop, 30);
+        }
+        
+        function loadGameData() {
+            loadClouds();
+            loadObstacles();
+        }
+
+        loadGameData();
+        loop();
+        
+        document.addEventListener("keydown", changeScene, true);
+        document.addEventListener("keydown", changeSpeed, true);
+    </script>
+</body>
+</html>
